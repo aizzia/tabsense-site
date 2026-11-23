@@ -335,7 +335,7 @@
       <div class="spec-cell">
         <div class="tag">02 // TWIN PRECISION</div>
         <div class="spec-val">100.0%</div>
-        <div class="spec-desc">Verified P@10 across sequential ledger ops &amp; 295 ARTIQ .h5 runs.</div>
+        <div class="spec-desc">417/417 returned precision (0 false hits) on held-out ARTIQ .h5 split &amp; ledger ops.</div>
       </div>
       <div class="spec-cell">
         <div class="tag">03 // ORTHOGONALITY</div>
@@ -374,38 +374,57 @@
     </section>
 
     <section class="bench-wrap">
-      <div class="tag">VERIFIED BENCHMARK SCORECARD // APPLE SILICON CPU (ZERO GPU)</div>
+      <div class="tag">HELD-OUT BENCHMARK SCORECARD // SEED-42 SPLIT (90-ENTITY EVAL INDEX, ZERO GPU)</div>
       <table>
         <thead>
           <tr>
-            <th>Benchmark Suite</th>
-            <th>Row-to-Text RAG (MiniLM)</th>
-            <th>TabSense Core BTR (Frozen Pod)</th>
-            <th>Scarcity Gate (&le;3 Matches)</th>
-            <th>Outlier Refusal (0 True Matches)</th>
-            <th>Query Latency</th>
+            <th>Comparator / Suite</th>
+            <th>Correct / Requested</th>
+            <th>Correct / Returned</th>
+            <th>Scarcity Gate (&le;3 True)</th>
+            <th>Novel Fault Refusal</th>
+            <th>CPU Latency</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>Sequential Banking / Ops Ledger (verify_core.py)</td>
-            <td>53.3% P@10</td>
-            <td><strong>100.0% P@10</strong></td>
-            <td>6 / 6 unpadded</td>
-            <td>10 / 10 refused</td>
-            <td>3.50 ms</td>
-          </tr>
-          <tr>
-            <td>Native ARTIQ .h5 Quantum Telemetry (295 Scans)</td>
-            <td>45.0% P@10</td>
-            <td><strong>100.0% P@10</strong></td>
+            <td><strong>Core BTR (Read-Only Frozen Pod — ARTIQ .h5)</strong></td>
+            <td><strong>417 / 420 (99.3%)</strong></td>
+            <td><strong>417 / 417 (100.0% &middot; 0 false hits)</strong></td>
             <td>4 / 5 unpadded</td>
             <td>10 / 10 refused</td>
             <td>3.62 ms</td>
           </tr>
+          <tr>
+            <td>Pooled-View Nearest Neighbors (Same Masked Views, No Lenses)</td>
+            <td>412 / 420 (98.1%)</td>
+            <td>412 / 420 (8 false hits)</td>
+            <td>No cutoff gate</td>
+            <td>No cutoff gate</td>
+            <td>&mdash;</td>
+          </tr>
+          <tr>
+            <td>MiniLM Row-to-Text Serialization (all-MiniLM-L6-v2)</td>
+            <td>189 / 420 (45.0%)</td>
+            <td>189 / 420 (231 false hits)</td>
+            <td>No cutoff gate</td>
+            <td>No cutoff gate</td>
+            <td>&mdash;</td>
+          </tr>
+          <tr>
+            <td><strong>Core BTR — Sequential Banking / Ops Ledger (verify_core.py)</strong></td>
+            <td><strong>100.0% P@10</strong> (vs. 53.3% MiniLM)</td>
+            <td><strong>100.0% returned precision</strong></td>
+            <td>6 / 6 unpadded</td>
+            <td>10 / 10 refused</td>
+            <td>3.50 ms</td>
+          </tr>
         </tbody>
       </table>
-    </section>
+      <p style="font-family: 'IBM Plex Mono', monospace; font-size: 0.74rem; color: var(--muted); margin-top: 0.9rem;">
+        OFFLINE CONTAINER VERIFIED: Tensor-level SHA-256 weight fingerprinting (core-btr/lens-v1) verified across macOS calibration and network-isolated (--network none) Linux Docker runtime with read-only bundle mounts. Synthetic benchmarks verify retrieval &amp; refusal mechanics; real-hardware lift requires experimental lab telemetry.
+      </p>
+        </section>
 
     <section class="license-grid" id="licensing">
       <div class="lic-box">
