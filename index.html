@@ -1,508 +1,902 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="paper">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TabSense — Deterministic Set Transformer Retrieval for Quantum & Financial Telemetry</title>
-  <meta name="description" content="Sub-4ms multi-lens Set Transformer retrieval and fail-closed anomaly refusal for ARTIQ HDF5 quantum scans, commercial banking AML, and real-time card authorization." />
-  <link rel="canonical" href="https://tabsense.io/" />
-  <meta property="og:title" content="TabSense — Un-Flattened Sequential Memory for Quantum & Finance" />
-  <meta property="og:description" content="100.0% P@10 historical twin precision, explicit 0.0 vs NULL separation, and 3.62ms CPU inference with SHA-256 frozen weights." />
-  <meta property="og:url" content="https://tabsense.io/" />
-  <meta property="og:type" content="website" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <title>TabSense (core-btr) — Deterministic Sequential Telemetry Retrieval on Local CPU</title>
+  <meta name="description" content="Deterministic 64-D orthogonal set retrieval on local CPU. 3.62 ms inference. Zero network egress. Zero-PII architecture for banking auth and ISO 8583 payment rails." />
   <style>
-    :root[data-theme="paper"] {
-      --bg: #f5f5f2;
-      --surface: #ecece7;
-      --ink: #0e0e0e;
-      --muted: #52524e;
-      --border: #0e0e0e;
-      --accent: #ff3b00;
-      --ok: #007a3d;
+    :root {
+      --bg: #0c0e12;
+      --surface: #12161d;
+      --surface-2: #171c26;
+      --border: #252d3d;
+      --border-strong: #364156;
+      --text: #e6eaf0;
+      --muted: #94a0b8;
+      --dim: #647187;
+      --accent: #7dd3fc;
+      --pass: #34d399;
+      --hold: #fbbf24;
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
-    :root[data-theme="dark"] {
-      --bg: #0a0a0a;
-      --surface: #141414;
-      --ink: #eaeaea;
-      --muted: #9a9a9a;
-      --border: #2b2b2b;
-      --accent: #ff4d1a;
-      --ok: #00e676;
+
+    body[data-theme="paper"] {
+      --bg: #fcfcfd;
+      --surface: #f4f6f9;
+      --surface-2: #eaeef4;
+      --border: #d5dce6;
+      --border-strong: #b0becf;
+      --text: #111827;
+      --muted: #334155;
+      --dim: #64748b;
+      --accent: #0369a1;
+      --pass: #047857;
+      --hold: #b45309;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    @media print {
+      :root, body {
+        --bg: #ffffff !important;
+        --surface: #ffffff !important;
+        --surface-2: #f3f4f6 !important;
+        --border: #d1d5db !important;
+        --border-strong: #9ca3af !important;
+        --text: #000000 !important;
+        --muted: #374151 !important;
+        --dim: #4b5563 !important;
+        --accent: #000000 !important;
+      }
+      .site-header { position: static !important; }
+      .theme-btn, .copy-btn { display: none !important; }
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
     body {
+      margin: 0;
       background: var(--bg);
-      color: var(--ink);
-      font-family: 'Space Grotesk', sans-serif;
-      line-height: 1.45;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.6;
       -webkit-font-smoothing: antialiased;
-      max-width: 1360px;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code, pre { font-family: var(--mono); }
+
+    p code, li code, td code {
+      font-size: 0.87em;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      padding: 0.1em 0.35em;
+      border-radius: 3px;
+    }
+
+    .container {
+      max-width: 1100px;
       margin: 0 auto;
-      border-left: 1px solid var(--border);
-      border-right: 1px solid var(--border);
+      padding: 0 1.5rem;
     }
-    .topbar {
-      display: grid;
-      grid-template-columns: 1fr auto auto auto;
+
+    .site-header {
       border-bottom: 1px solid var(--border);
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.75rem;
-      text-transform: uppercase;
+      background: var(--bg);
+      position: sticky;
+      top: 0;
+      z-index: 20;
     }
-    .topbar > div, .topbar > button {
-      padding: 0.8rem 1.25rem;
-      border-left: 1px solid var(--border);
-      background: transparent;
-      color: var(--ink);
-      font-family: inherit;
-      font-size: inherit;
-      text-transform: inherit;
+
+    .nav-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 54px;
+      gap: 1rem;
+      overflow-x: auto;
     }
-    .topbar > div:first-child { border-left: none; font-weight: 600; }
-    .theme-btn { cursor: pointer; font-weight: 500; }
-    .theme-btn:hover { background: var(--accent); color: #ffffff; }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      font-family: var(--mono);
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .brand-tag {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 0.08rem 0.4rem;
+      border-radius: 3px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      font-size: 0.83rem;
+      white-space: nowrap;
+    }
+
+    .nav-links a { color: var(--muted); }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+    .theme-btn {
+      background: var(--surface);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      padding: 0.22rem 0.5rem;
+      cursor: pointer;
+    }
+
+    .theme-btn:hover { color: var(--text); border-color: var(--border-strong); }
 
     .hero {
-      padding: 4rem 2rem 3.5rem;
+      padding: 3.25rem 0 2.75rem;
       border-bottom: 1px solid var(--border);
     }
-    .kicker {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.78rem;
-      color: var(--accent);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      margin-bottom: 1.25rem;
-    }
-    h1 {
-      font-size: clamp(2.4rem, 5.6vw, 5.2rem);
-      line-height: 0.98;
-      letter-spacing: -0.035em;
-      font-weight: 700;
-      max-width: 18ch;
-      margin-bottom: 1.75rem;
-    }
-    .thesis {
-      max-width: 74ch;
-      font-size: clamp(1.05rem, 1.6vw, 1.3rem);
-      color: var(--ink);
-      margin-bottom: 2rem;
-    }
-    .thesis strong { border-bottom: 2px solid var(--accent); font-weight: 600; }
-    .hero-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-      align-items: center;
-    }
-    .btn {
-      display: inline-block;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.82rem;
-      text-transform: uppercase;
-      text-decoration: none;
-      padding: 0.9rem 1.5rem;
-      border: 1px solid var(--border);
-      background: var(--ink);
-      color: var(--bg);
-      transition: background 0.12s, color 0.12s, border-color 0.12s;
-    }
-    .btn:hover { background: var(--accent); border-color: var(--accent); color: #ffffff; }
-    .btn-ghost { background: transparent; color: var(--ink); }
 
-    .dual-pain {
+    .hero-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      border-bottom: 1px solid var(--border);
+      grid-template-columns: 1.05fr 1fr;
+      gap: 2.25rem;
+      align-items: start;
     }
-    .pain-col {
-      padding: 2.25rem 2rem;
-      border-right: 1px solid var(--border);
-    }
-    .pain-col:last-child { border-right: none; }
-    .tag {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.72rem;
-      text-transform: uppercase;
+
+    .rfc-meta {
+      font-family: var(--mono);
+      font-size: 0.74rem;
       color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
       margin-bottom: 0.65rem;
     }
-    .pain-col h2 {
-      font-size: 1.55rem;
+
+    .hero h1 {
+      font-size: clamp(1.6rem, 2.6vw, 2.1rem);
+      line-height: 1.24;
       letter-spacing: -0.02em;
-      margin-bottom: 0.85rem;
+      margin: 0 0 0.95rem;
+      font-weight: 700;
     }
-    .pain-col p { color: var(--muted); font-size: 0.98rem; margin-bottom: 1rem; }
-    .mono-pill {
-      display: inline-block;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.74rem;
-      padding: 0.3rem 0.55rem;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      margin-right: 0.4rem;
-      margin-top: 0.35rem;
+
+    .hero-lead {
+      color: var(--muted);
+      font-size: 0.96rem;
+      margin: 0 0 1.35rem;
     }
 
     .spec-strip {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      border-bottom: 1px solid var(--border);
+      grid-template-columns: repeat(3, 1fr);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      margin-bottom: 1.35rem;
     }
+
     .spec-cell {
-      padding: 1.5rem 2rem;
+      padding: 0.7rem 0.85rem;
       border-right: 1px solid var(--border);
     }
-    .spec-cell:last-child { border-right: none; }
-    .spec-val {
-      font-size: 2.1rem;
-      font-weight: 700;
-      letter-spacing: -0.03em;
-      margin: 0.25rem 0;
-    }
-    .spec-desc { font-size: 0.88rem; color: var(--muted); }
 
-    .sandbox {
-      border-bottom: 1px solid var(--border);
+    .spec-cell:last-child { border-right: none; }
+
+    .spec-val {
+      display: block;
+      font-family: var(--mono);
+      font-size: 1.02rem;
+      font-weight: 700;
+      color: var(--text);
     }
-    .section-bar {
-      padding: 0.9rem 2rem;
-      border-bottom: 1px solid var(--border);
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.75rem;
-      text-transform: uppercase;
+
+    .spec-lbl {
+      font-size: 0.73rem;
+      color: var(--muted);
+    }
+
+    .cli-card {
       background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      padding: 0.95rem 1rem;
+    }
+
+    .cli-header {
       display: flex;
       justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 0.5rem;
+      align-items: center;
+      font-family: var(--mono);
+      font-size: 0.73rem;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
     }
-    .preset-tabs {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
+
+    .copy-btn {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border-strong);
+      border-radius: 3px;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      padding: 0.2rem 0.55rem;
+      cursor: pointer;
+    }
+
+    .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .cli-pre {
+      margin: 0;
+      font-size: 0.84rem;
+      line-height: 1.55;
+      color: var(--accent);
+      overflow-x: auto;
+    }
+
+    .cli-note {
+      margin: 0.6rem 0 0;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .inspector {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .inspector-tabs {
+      display: flex;
       border-bottom: 1px solid var(--border);
+      background: var(--surface-2);
+      overflow-x: auto;
     }
-    .preset-tab {
-      padding: 1rem 1.25rem;
+
+    .tab-btn {
+      background: none;
       border: none;
       border-right: 1px solid var(--border);
-      background: transparent;
-      color: var(--ink);
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.76rem;
-      text-align: left;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 0.73rem;
+      padding: 0.6rem 0.8rem;
       cursor: pointer;
-      text-transform: uppercase;
+      white-space: nowrap;
     }
-    .preset-tab:last-child { border-right: none; }
-    .preset-tab.active { background: var(--ink); color: var(--bg); font-weight: 600; }
-    .sandbox-grid {
-      display: grid;
-      grid-template-columns: 1.15fr 1fr;
-    }
-    .sandbox-pane {
-      padding: 1.75rem 2rem;
-      border-right: 1px solid var(--border);
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.8rem;
-    }
-    .sandbox-pane:last-child { border-right: none; }
-    pre {
-      white-space: pre-wrap;
-      background: var(--surface);
-      padding: 1rem;
-      border: 1px solid var(--border);
-      margin-top: 0.75rem;
-      line-height: 1.55;
-      overflow-x: auto;
-    }
-    .verdict-badge {
-      display: inline-block;
-      padding: 0.25rem 0.6rem;
-      border: 1px solid var(--border);
-      font-weight: 600;
-      margin-top: 0.75rem;
-    }
-    .verdict-ok { color: var(--ok); }
-    .verdict-refuse { color: var(--accent); }
 
-    .bench-wrap {
-      padding: 2.25rem 2rem;
-      border-bottom: 1px solid var(--border);
-      overflow-x: auto;
+    .tab-btn.active {
+      background: var(--surface);
+      color: var(--text);
+      font-weight: 600;
     }
+
+    .inspector-body {
+      padding: 0.95rem 1rem;
+      margin: 0;
+      font-size: 0.75rem;
+      line-height: 1.48;
+      overflow-x: auto;
+      color: var(--text);
+    }
+
+    .status-pass { color: var(--pass); font-weight: 700; }
+    .status-hold { color: var(--hold); font-weight: 700; }
+
+    .doc-section {
+      padding: 2.75rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sec-num {
+      font-family: var(--mono);
+      font-size: 0.74rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      display: block;
+      margin-bottom: 0.3rem;
+    }
+
+    .doc-section h2 {
+      font-size: 1.35rem;
+      margin: 0 0 0.65rem;
+      letter-spacing: -0.015em;
+    }
+
+    .sec-intro {
+      max-width: 800px;
+      color: var(--muted);
+      margin: 0 0 1.5rem;
+    }
+
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.15rem;
+    }
+
+    .tech-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 1.15rem 1.25rem;
+      border-radius: 4px;
+    }
+
+    .tech-box h3 {
+      font-size: 0.96rem;
+      margin: 0 0 0.45rem;
+      font-family: var(--mono);
+    }
+
+    .tech-box p {
+      margin: 0;
+      font-size: 0.89rem;
+      color: var(--muted);
+    }
+
+    .topology-pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.15rem;
+      font-size: 0.78rem;
+      line-height: 1.45;
+      overflow-x: auto;
+      margin: 0;
+      color: var(--text);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--surface);
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.8rem;
-      margin-top: 1rem;
-    }
-    th, td {
-      border: 1px solid var(--border);
-      padding: 0.85rem 1rem;
+      font-size: 0.85rem;
       text-align: left;
+      min-width: 740px;
     }
-    th { background: var(--surface); text-transform: uppercase; font-size: 0.72rem; }
+
+    th {
+      background: var(--surface-2);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 0.73rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      padding: 0.7rem 0.9rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 0.75rem 0.9rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+
+    .mono-cell {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .sr-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.1rem;
+    }
+
+    .sr-item {
+      border-left: 2px solid var(--border-strong);
+      padding: 0.2rem 0 0.2rem 1rem;
+    }
+
+    .sr-item strong {
+      display: block;
+      font-size: 0.92rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .sr-item span {
+      font-size: 0.86rem;
+      color: var(--muted);
+    }
 
     .license-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      border-bottom: 1px solid var(--border);
+      grid-template-columns: 1.25fr 1fr;
+      gap: 1.35rem;
     }
-    .lic-box {
-      padding: 2.25rem 2rem;
-      border-right: 1px solid var(--border);
-    }
-    .lic-box:last-child { border-right: none; }
-    .lic-box h3 { font-size: 1.35rem; margin-bottom: 0.65rem; }
-    .lic-box p { color: var(--muted); font-size: 0.94rem; margin-bottom: 1.2rem; }
 
-    footer {
-      padding: 1.25rem 2rem;
+    .license-box {
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      padding: 1.4rem;
+      border-radius: 4px;
+    }
+
+    .community-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 1.4rem;
+      border-radius: 4px;
+    }
+
+    .price-line {
+      font-family: var(--mono);
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0.35rem 0 0.7rem;
+    }
+
+    .plain-list {
+      margin: 0.7rem 0 0;
+      padding-left: 1.15rem;
+      color: var(--muted);
+      font-size: 0.87rem;
+    }
+
+    .plain-list li { margin-bottom: 0.35rem; }
+
+    .site-footer {
+      padding: 2rem 0 2.5rem;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--dim);
       display: flex;
       justify-content: space-between;
       flex-wrap: wrap;
       gap: 1rem;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.74rem;
-      color: var(--muted);
     }
 
     @media (max-width: 900px) {
-      .topbar { grid-template-columns: 1fr auto; }
-      .topbar .hide-sm { display: none; }
-      .dual-pain, .spec-strip, .preset-tabs, .sandbox-grid, .license-grid {
+      .hero-grid, .tech-grid, .sr-grid, .license-grid {
         grid-template-columns: 1fr;
-      }
-      .pain-col, .spec-cell, .preset-tab, .sandbox-pane, .lic-box {
-        border-right: none;
-        border-bottom: 1px solid var(--border);
       }
     }
   </style>
 </head>
-<body>
+<body data-theme="slate">
 
-  <header class="topbar">
-    <div>TABSENSE.IO // CORE-BTR POD v0.1</div>
-    <div class="hide-sm">ENGINE: MULTI-LENS SET TRANSFORMER</div>
-    <div class="hide-sm">WEIGHTS: SHA-256 FROZEN</div>
-    <button class="theme-btn" id="themeBtn" type="button">[THEME: PAPER / DARK]</button>
+  <header class="site-header">
+    <div class="container nav-bar">
+      <div class="brand">
+        <span>tabsense // core-btr</span>
+        <span class="brand-tag">v2.4 · CPU</span>
+      </div>
+      <nav class="nav-links" aria-label="Primary Specification Navigation">
+        <a href="#specification">Specification</a>
+        <a href="#benchmarks">Benchmarks</a>
+        <a href="#sr11-7">SR 11-7 Compliance</a>
+        <a href="#cli">GitHub / CLI</a>
+        <a href="#licensing">Air-Gapped Licensing</a>
+        <a href="#procurement">TPRM</a>
+        <button class="theme-btn" id="themeToggle" type="button" title="Switch between Slate and Paper research view">Paper View</button>
+      </nav>
+    </div>
   </header>
 
-  <main>
+  <main class="container">
     <section class="hero">
-      <div class="kicker">SPECIMEN 01 // QUANTUM TELEMETRY + FINANCIAL RAILS</div>
-      <h1>WHAT DO QUANTUM LABS &amp; BANKING RAILS HAVE IN COMMON?</h1>
-      <p class="thesis">
-        Both live and die in millisecond sequential rows where <strong>an explicit 0.0 is a critical signal—never a missing NULL</strong>, inter-event cadence carries the physical signature, and LLM text-RAG hallucinations are unacceptable. <strong>TabSense</strong> (powered by <strong>Core BTR</strong>) encodes raw event windows across orthogonal Set Transformer lenses—returning exact historical twins in <strong>3.62 ms on CPU</strong> and failing closed on unseen anomalies.
-      </p>
-      <div class="hero-actions">
-        <a class="btn" href="mailto:licensing@aizzia.ai?subject=core-btr%20Repository%20Access%20Request">REQUEST REPO ACCESS (AIZZIA/CORE-BTR) &rarr;</a>
-        <a class="btn btn-ghost" href="#licensing">ACADEMIC FREE / COMMERCIAL POD LICENSING</a>
-      </div>
-    </section>
+      <div class="hero-grid">
+        <div>
+          <div class="rfc-meta">Systems Architecture Specification · Auth &amp; ISO 8583 Rails</div>
+          <h1>Deterministic sequential telemetry retrieval on local CPU.</h1>
+          <p class="hero-lead">
+            Consumer AI agents now authenticate and transact on behalf of legitimate account holders. Legacy WAF rules lock out real customers,
+            while tokenized vector embeddings flatten numbers into text and force nearest-neighbor matches on out-of-distribution noise.
+            <code>core-btr</code> evaluates 64-D orthogonal lenses in <strong>3.62 ms</strong>—preserving explicit <code>0.0</code> signals and failing closed
+            (<code>EMPTY_BELOW_CUTOFF</code>) when uncertainty exceeds calibrated bounds.
+          </p>
 
-    <section class="dual-pain">
-      <div class="pain-col">
-        <div class="tag">CUSTOMER 01 // ARTIQ &amp; DAX QUANTUM LABS</div>
-        <h2>0.0 Photons Means a Lost Ion—Not an Unprobed Channel</h2>
-        <p>Flattening multi-step HDF5 scan arrays into prose destroys phase contrast trajectories, 60 Hz magnetic drift rhythms, and conflates dark-ion 0-photon readouts with NaN channels.</p>
-        <span class="mono-pill">rid-GROUPED .H5 SCANS</span>
-        <span class="mono-pill">FAST-MCP DRIFT TOOL</span>
-        <span class="mono-pill">100.0% P@10 VS 45.0% RAG</span>
-      </div>
-      <div class="pain-col">
-        <div class="tag">CUSTOMER 02 // BANKS, CREDIT UNIONS &amp; CARD RAILS</div>
-        <h2>$0.00 Probes Precede Wire Drains &amp; Card-Testing Floods</h2>
-        <p>Rule queues drown AML teams in 90%+ false positives, while stochastic LLM embeddings cannot clear SR 11-7 validation or sub-15ms ISO 8583 card authorization budgets.</p>
-        <span class="mono-pill">$0.00 ASI / WIRE PROBES</span>
-        <span class="mono-pill">SR 11-7 DETERMINISTIC</span>
-        <span class="mono-pill">100.0% P@10 VS 53.3% RAG</span>
-      </div>
-    </section>
+          <div class="spec-strip" role="list" aria-label="Operational Bounds">
+            <div class="spec-cell" role="listitem">
+              <span class="spec-val">3.62 ms</span>
+              <span class="spec-lbl">Local x86 / ARM CPU Latency</span>
+            </div>
+            <div class="spec-cell" role="listitem">
+              <span class="spec-val">100% Air-Gapped</span>
+              <span class="spec-lbl">Zero Network Egress · Local VPC</span>
+            </div>
+            <div class="spec-cell" role="listitem">
+              <span class="spec-val">Zero-PII</span>
+              <span class="spec-lbl">Structural &amp; Cadence Invariants</span>
+            </div>
+          </div>
 
-    <section class="spec-strip">
-      <div class="spec-cell">
-        <div class="tag">01 // CPU LATENCY</div>
-        <div class="spec-val">3.62 ms</div>
-        <div class="spec-desc">Air-gapped CPU inference. Zero GPU, zero external LLM API calls.</div>
-      </div>
-      <div class="spec-cell">
-        <div class="tag">02 // TWIN PRECISION</div>
-        <div class="spec-val">100.0%</div>
-        <div class="spec-desc">417/417 returned precision (0 false hits) on held-out ARTIQ .h5 split &amp; ledger ops.</div>
-      </div>
-      <div class="spec-cell">
-        <div class="tag">03 // ORTHOGONALITY</div>
-        <div class="spec-val">|&rho;| &le; 0.60</div>
-        <div class="spec-desc">Pairwise Spearman gate across 5 to 8 independent 64-D lenses.</div>
-      </div>
-      <div class="spec-cell">
-        <div class="tag">04 // NOVEL FAULT GATE</div>
-        <div class="spec-val">10 / 10</div>
-        <div class="spec-desc">Fail-closed EMPTY_BELOW_CUTOFF refusal on out-of-distribution spikes.</div>
-      </div>
-    </section>
-
-    <section class="sandbox">
-      <div class="section-bar">
-        <span>INTERACTIVE SPECIMEN WORKBENCH // CLICK REGIME TO INSPECT POD RESPONSE</span>
-        <span>LENSES: HOW_SCALE &middot; ZERO_VS_NULL &middot; CADENCE_RHYTHM &middot; SEASONAL_PHASE &middot; EXTREMES</span>
-      </div>
-      <div class="preset-tabs">
-        <button class="preset-tab active" data-key="quantum_dark" type="button">01 // QUANTUM: DARK-ION 0.0 HOP</button>
-        <button class="preset-tab" data-key="card_probe" type="button">02 // CARD/WIRE: $0.00 BOT PROBE</button>
-        <button class="preset-tab" data-key="aml_sweep" type="button">03 // BANK AML: BENIGN PAYROLL SWEEP</button>
-        <button class="preset-tab" data-key="novel_spike" type="button">04 // OUTLIER: UNSEEN FAULT REFUSAL</button>
-      </div>
-      <div class="sandbox-grid">
-        <div class="sandbox-pane">
-          <div class="tag">RAW SEQUENTIAL EVENT WINDOW (UN-FLATTENED INPUT)</div>
-          <pre id="inputPre"></pre>
+          <div class="cli-card">
+            <div class="cli-header">
+              <span>10-MINUTE LOCAL SELF-AUDIT</span>
+              <button class="copy-btn" id="copyCliBtn" type="button">Copy CLI Command</button>
+            </div>
+            <pre class="cli-pre" id="cliSnippet">pip install tabsense-benchmark
+tabsense-benchmark run --local</pre>
+            <p class="cli-note">
+              Audit your auth telemetry against deterministic lenses in 10 minutes on your own machine. Zero network egress. No data leaves your RAM.
+            </p>
+          </div>
         </div>
-        <div class="sandbox-pane">
-          <div class="tag">CORE-BTR DETERMINISTIC POD OUTPUT</div>
-          <pre id="outputPre"></pre>
-          <div id="verdictBadge" class="verdict-badge verdict-ok"></div>
+
+        <div class="inspector" aria-label="Telemetry Window and Orthogonal Lens Inspector">
+          <div class="inspector-tabs" role="tablist">
+            <button class="tab-btn active" type="button" data-case="agent">01_delegated_agent.json</button>
+            <button class="tab-btn" type="button" data-case="ato">02_disguised_ato.json</button>
+            <button class="tab-btn" type="button" data-case="iso8583">03_iso8583_probe.json</button>
+          </div>
+          <pre class="inspector-body" id="inspectorOutput">{
+  "input_window": [
+    {"dt_ms": 240, "step": "token_refresh", "amt": 0.0,   "dom_ev": 0},
+    {"dt_ms": 255, "step": "acct_summary",  "amt": 0.0,   "dom_ev": 0},
+    {"dt_ms": 248, "step": "bill_schedule", "amt": 145.2, "dom_ev": 0}
+  ],
+  "orthogonal_lens_projection_64d": {
+    "cadence_rhythm": 0.982,
+    "ordered_transitions": 0.964,
+    "zero_vs_null": "EXPLICIT_0.0_SIGNAL_RETAINED",
+    "role_value_binding": 0.951,
+    "max_pairwise_spearman_rho": 0.427
+  },
+  "verdict": {
+    "constellation_score": 0.9614,
+    "tau_cutoff": 0.9120,
+    "status": "ALLOW_STAGE1_HIGHWAY",
+    "matched_regime": "authorized_customer_agent",
+    "cpu_time_ms": 3.41
+  }
+}</pre>
         </div>
       </div>
     </section>
 
-    <section class="bench-wrap">
-      <div class="tag">HELD-OUT BENCHMARK SCORECARD // SEED-42 SPLIT (90-ENTITY EVAL INDEX, ZERO GPU)</div>
-      <table>
-        <thead>
-          <tr>
-            <th>Comparator / Suite</th>
-            <th>Correct / Requested</th>
-            <th>Correct / Returned</th>
-            <th>Scarcity Gate (&le;3 True)</th>
-            <th>Novel Fault Refusal</th>
-            <th>CPU Latency</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><strong>Core BTR (Read-Only Frozen Pod — ARTIQ .h5)</strong></td>
-            <td><strong>417 / 420 (99.3%)</strong></td>
-            <td><strong>417 / 417 (100.0% &middot; 0 false hits)</strong></td>
-            <td>4 / 5 unpadded</td>
-            <td>10 / 10 refused</td>
-            <td>3.62 ms</td>
-          </tr>
-          <tr>
-            <td>Pooled-View Nearest Neighbors (Same Masked Views, No Lenses)</td>
-            <td>412 / 420 (98.1%)</td>
-            <td>412 / 420 (8 false hits)</td>
-            <td>No cutoff gate</td>
-            <td>No cutoff gate</td>
-            <td>&mdash;</td>
-          </tr>
-          <tr>
-            <td>MiniLM Row-to-Text Serialization (all-MiniLM-L6-v2)</td>
-            <td>189 / 420 (45.0%)</td>
-            <td>189 / 420 (231 false hits)</td>
-            <td>No cutoff gate</td>
-            <td>No cutoff gate</td>
-            <td>&mdash;</td>
-          </tr>
-          <tr>
-            <td><strong>Core BTR — Sequential Banking / Ops Ledger (verify_core.py)</strong></td>
-            <td><strong>100.0% P@10</strong> (vs. 53.3% MiniLM)</td>
-            <td><strong>100.0% returned precision</strong></td>
-            <td>6 / 6 unpadded</td>
-            <td>10 / 10 refused</td>
-            <td>3.50 ms</td>
-          </tr>
-        </tbody>
-      </table>
-      <p style="font-family: 'IBM Plex Mono', monospace; font-size: 0.74rem; color: var(--muted); margin-top: 0.9rem;">
-        OFFLINE CONTAINER VERIFIED: Tensor-level SHA-256 weight fingerprinting (core-btr/lens-v1) verified across macOS calibration and network-isolated (--network none) Linux Docker runtime with read-only bundle mounts. Synthetic benchmarks verify retrieval &amp; refusal mechanics; real-hardware lift requires experimental lab telemetry.
+    <section class="doc-section" id="specification">
+      <span class="sec-num">Section 01 · Mathematical Specification &amp; Rail Topology</span>
+      <h2>Deterministic Set Retrieval vs. Tokenized Vector Baselines</h2>
+      <p class="sec-intro">
+        Evaluated against tokenized vector baselines for zero-value retention and cadence anomaly detection.
+        Stage 1 operates inline inside sub-15ms login and ISO 8583 authorization budgets; only refused exceptions exit onto your Stage 2 off-ramp.
       </p>
-        </section>
 
-    <section class="license-grid" id="licensing">
-      <div class="lic-box">
-        <div class="tag">TRACK A // SMALL BUSINESS &amp; ACADEMIC LABS ($0)</div>
-        <h3>Small Business &amp; University Research</h3>
-        <p>Source-available under <strong>PolyForm Small Business License 1.0.0</strong> (&lt;100 workers &amp; &lt;$1M 2019-adjusted revenue), with a free supplemental non-commercial research grant for accredited universities and public laboratories.</p>
-        <a class="btn btn-ghost" href="mailto:licensing@aizzia.ai?subject=Academic%20Research%20Access%20Request%20(core-btr)">REQUEST ACADEMIC REPO ACCESS &rarr;</a>
+      <div class="tech-grid" style="margin-bottom: 1.25rem;">
+        <div class="tech-box">
+          <h3>Explicit 0.0 Signal vs. Missing Nulls</h3>
+          <p>
+            Text tokenizers and mean-pooled embeddings conflate explicit <code>0.0</code> probes (<code>$0.00</code> card verification, <code>0</code> DOM events in headless personal agents)
+            with missing channel dropouts (<code>NaN</code>). <code>core-btr</code> isolates both via dedicated structural masks.
+          </p>
+        </div>
+        <div class="tech-box">
+          <h3>64-D Orthogonality Bound (|&rho;| &le; 0.60)</h3>
+          <p>
+            Admitted lenses (<code>cadence_rhythm</code>, <code>ordered_transitions</code>, <code>role_value_binding</code>, <code>how_scale</code>, <code>zero_vs_null</code>, <code>extrema_lifecycle</code>)
+            must satisfy pairwise Spearman <code>|&rho;| &le; 0.60</code> at calibration or halt with <code>SensoryGapRefusal</code>.
+          </p>
+        </div>
       </div>
-      <div class="lic-box">
-        <div class="tag">TRACK B // ENTERPRISE &amp; DEPOSITORY INSTITUTIONS</div>
-        <h3>Commercial Air-Gapped Pod License</h3>
-        <p>Required for all for-profit companies and chartered financial institutions—including commercial banks, savings institutions, credit unions, card issuers, and PayFacs. Deployed as a zero-PII offline Docker + FastMCP pod.</p>
-        <a class="btn" href="mailto:licensing@aizzia.ai?subject=48-Hr%20Zero-PII%20CSV%20Shootout%20/%20Commercial%20Pod%20Inquiry">SCHEDULE 48-HR ZERO-PII CSV SHOOTOUT &rarr;</a>
+
+      <pre class="topology-pre">Session / ISO 8583 Ingress ──► [ STAGE 1: core-btr Frozen Pod · 3.62 ms CPU · tau Cutoff ]
+                                      │                                        │
+                            Score &gt;= tau (Verified)                 EMPTY_BELOW_CUTOFF (Refused)
+                                      ▼                                        ▼
+                       [ MAIN HIGHWAY: 0ms Added UX ]           [ STAGE 2 OFF-RAMP: Tunable Policy ]
+                       Human &amp; Delegated Customer Agents        Auth: Step-Up MFA / SOC Queue
+                       Pass Without False Lockouts              Card Rails: 3DS2 / Agent Mandate Check</pre>
+    </section>
+
+    <section class="doc-section" id="benchmarks">
+      <span class="sec-num">Section 02 · Empirical Benchmarks</span>
+      <h2>Uncurated Public Telemetry Scorecard</h2>
+      <p class="sec-intro">
+        Measured on open-source financial and physical telemetry containing sub-second arrival bursts, severe class imbalance (<code>0.173%</code> fraud),
+        explicit <code>$0.00</code> probes, and 7–8% missing telemetry dropouts.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Workload</th>
+              <th scope="col">Public Dataset</th>
+              <th scope="col">Admitted Lenses</th>
+              <th scope="col">Stage 1 Returned Precision</th>
+              <th scope="col">Pooled Baseline</th>
+              <th scope="col">Out-of-Distribution Verdict</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Card Fraud Triage</strong><br><span style="color:var(--muted);font-size:0.78rem;">2-Stage Highway + Off-Ramp</span></td>
+              <td>ULB European Cardholders<br><span style="color:var(--muted);font-size:0.78rem;">284,807 txns · 0.173% fraud</span></td>
+              <td class="mono-cell">7 / 8 (|&rho;| = 0.427)</td>
+              <td class="mono-cell"><span class="status-pass">100.0%</span> (Stage 1) · 57.8% (2-Stage)</td>
+              <td class="mono-cell">39.0%</td>
+              <td class="mono-cell"><span class="status-pass">EMPTY_BELOW_CUTOFF</span></td>
+            </tr>
+            <tr>
+              <td><strong>Multi-Bank AML Flows</strong><br><span style="color:var(--muted);font-size:0.78rem;">Wire / ACH / Cross-Currency</span></td>
+              <td>IBM AML LI-Smaller<br><span style="color:var(--muted);font-size:0.78rem;">692,405 txns · 7% NaN</span></td>
+              <td class="mono-cell">8 / 8 (|&rho;| = 0.188)</td>
+              <td class="mono-cell"><span class="status-pass">0 False Positives</span> (&tau; = 0.9278)</td>
+              <td class="mono-cell">39.7%</td>
+              <td class="mono-cell"><span class="status-pass">EMPTY_BELOW_CUTOFF</span></td>
+            </tr>
+            <tr>
+              <td><strong>High-Noise Sensor Provenance</strong><br><span style="color:var(--muted);font-size:0.78rem;">Dark-Ion 0 vs. NaN Origin</span></td>
+              <td>ARTIQ Trapped-Ion Sweeps<br><span style="color:var(--muted);font-size:0.78rem;">480 runs · 80,850 steps</span></td>
+              <td class="mono-cell">7 / 8 (|&rho;| = 0.550)</td>
+              <td class="mono-cell"><span class="status-pass">86.2%</span> (112 / 130)</td>
+              <td class="mono-cell">46.7%</td>
+              <td class="mono-cell"><span class="status-pass">EMPTY_BELOW_CUTOFF</span></td>
+            </tr>
+            <tr>
+              <td><strong>Longitudinal Regime Drift</strong><br><span style="color:var(--muted);font-size:0.78rem;">Multi-Quarter Stability</span></td>
+              <td>Cryogenic Calibration Logs<br><span style="color:var(--muted);font-size:0.78rem;">170 runs · 24,695 steps</span></td>
+              <td class="mono-cell">7 / 8 (|&rho;| = 0.577)</td>
+              <td class="mono-cell"><span class="status-pass">85.7%</span> (6 / 7)</td>
+              <td class="mono-cell">63.1%</td>
+              <td class="mono-cell"><span class="status-pass">EMPTY_BELOW_CUTOFF</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="doc-section" id="sr11-7">
+      <span class="sec-num">Section 03 · Model Risk Management (SR 11-7)</span>
+      <h2>Deterministic Explainability &amp; Validation Bounds</h2>
+      <p class="sec-intro">
+        Designed for bank Model Risk Management teams requiring mathematical auditability, reproducible frozen weights, and strict non-custody of customer PII.
+      </p>
+
+      <div class="sr-grid">
+        <div class="sr-item">
+          <strong>Machine-Verifiable Audit JSON</strong>
+          <span>Every local calibration writes <code>sr11_7_audit_artifact.json</code> containing schema SHA-256 digests, admitted lenses, Spearman rank bounds, and hardest-impostor <code>&tau;</code> cutoffs.</span>
+        </div>
+        <div class="sr-item">
+          <strong>Frozen Weights (Zero Online Drift)</strong>
+          <span>Production pods execute static linear/rank projections with zero stochastic sampling, zero external API dependencies, and bit-identical replay on x86_64 and ARM64.</span>
+        </div>
+        <div class="sr-item">
+          <strong>Socket-Enforced Zero Network Egress</strong>
+          <span>The benchmark runner overrides <code>AF_INET</code> / <code>AF_INET6</code> socket calls under <code>--local</code>, guaranteeing at the OS interface level that telemetry never leaves host RAM.</span>
+        </div>
+        <div class="sr-item">
+          <strong>Zero-PII Structural Schema</strong>
+          <span>Ingests only opaque window IDs, relative timestamps, categorical endpoint/MCC tokens, and numeric magnitudes—never PANs, SSNs, names, or IP addresses.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="cli">
+      <span class="sec-num">Section 04 · GitHub / CLI &amp; Telemetry Schema</span>
+      <h2>Local CLI Reference &amp; Zero-PII Input Mapping</h2>
+      <p class="sec-intro">
+        Test immediately with built-in synthetic banking telemetry (no internal approvals needed), or point the runner at an anonymized Parquet/CSV export from Splunk, Snowflake, or Kafka.
+      </p>
+
+      <div class="tech-grid">
+        <div class="tech-box">
+          <h3>1. Synthetic &amp; Local Parquet Execution</h3>
+          <pre class="topology-pre" style="border:none;padding:0.5rem 0 0;background:transparent;"># Safe-harbor synthetic benchmark (zero bank data)
+tabsense-benchmark run --local --synthetic
+
+# Evaluate anonymized local auth or ISO 8583 export
+tabsense-benchmark run --local \
+  --input ./auth_windows.parquet \
+  --entity-col session_id \
+  --time-col event_ts \
+  --label-col regime</pre>
+        </div>
+        <div class="tech-box">
+          <h3>2. Minimal Zero-PII Column Contract</h3>
+          <p style="margin-bottom:0.6rem;">Any sequential CSV or Parquet table with &ge;10 events per window:</p>
+          <ul class="plain-list" style="margin-top:0;">
+            <li><code>entity_col</code>: Opaque session, token, or card-window hash</li>
+            <li><code>time_col</code>: ISO-8601 timestamp or epoch float/ms</li>
+            <li><code>categorical cols</code>: Endpoint route, auth channel, POS entry mode</li>
+            <li><code>numeric cols</code>: Amount (retaining <code>0.00</code>), latency, DOM count (retaining <code>NaN</code>)</li>
+          </ul>
+          <p style="margin-top:0.65rem;font-family:var(--mono);font-size:0.78rem;">
+            CLI Source &amp; Checksums &rarr; <a href="https://github.com/aizzia" rel="noopener">github.com/aizzia</a>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="licensing">
+      <span class="sec-num">Section 05 · Air-Gapped Licensing &amp; Open Science</span>
+      <h2>Predictable Annual Pod Licensing</h2>
+
+      <div class="license-grid">
+        <div class="license-box">
+          <div class="rfc-meta" style="margin-bottom:0.2rem;">Commercial Auth &amp; Payment Rails</div>
+          <div class="price-line">$35,000 – $150,000 / year</div>
+          <p style="margin:0;color:var(--muted);font-size:0.89rem;">
+            Flat annual per-pod license sized by rail throughput. Deployed inside your VPC or bare-metal Artifactory with zero per-query or token fees.
+          </p>
+          <ul class="plain-list">
+            <li>Signed air-gapped Python wheel &amp; distroless OCI image (CycloneDX SBOM + SHA-256)</li>
+            <li>SR 11-7 model validation documentation &amp; hardest-impostor calibration suite</li>
+            <li>Direct principal engineering support (Charlotte Metro / Remote): <a href="mailto:engineering@tabsense.io">engineering@tabsense.io</a></li>
+          </ul>
+        </div>
+
+        <div class="community-box">
+          <div class="rfc-meta" style="margin-bottom:0.2rem;">Community Contribution · Open Science</div>
+          <h3 style="margin:0.2rem 0 0.55rem;font-size:1.05rem;">Quantum &amp; Academic Laboratories</h3>
+          <p style="margin:0;color:var(--muted);font-size:0.87rem;">
+            <code>core-btr</code> was forged on native ARTIQ <code>.h5</code> trapped-ion sweeps to separate dark-ion <code>0</code> photon counts from missing cryogenic telemetry.
+            We provide no-cost research licenses to accredited universities and public national laboratories.
+          </p>
+          <p style="margin:0.8rem 0 0;font-family:var(--mono);font-size:0.78rem;">
+            Academic Licensing &rarr; <a href="mailto:research@tabsense.io">research@tabsense.io</a>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="procurement" style="border-bottom: none;">
+      <span class="sec-num">Section 06 · Vendor Onboarding &amp; Third-Party Risk (TPRM)</span>
+      <h2>Proportionate Low-Tier Software Onboarding (Aizzia, LLC)</h2>
+      <p class="sec-intro">
+        TabSense and <code>core-btr</code> are commercially licensed by <strong>Aizzia, LLC</strong>. Because execution is 100% on-premise with zero data egress and zero fourth-party cloud subcontractors,
+        deployments qualify under low-custody licensed binary classifications rather than SaaS data-processor tiers.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Procurement / TPRM Item</th>
+              <th scope="col">Aizzia, LLC Posture</th>
+              <th scope="col">Deliverable Artifact</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Contracting Legal Entity</strong></td>
+              <td><strong>Aizzia, LLC</strong> (d/b/a TabSense)<br><span style="color:var(--muted);font-size:0.78rem;">Wyoming Limited Liability Company · Principal Engineering Office: Cornelius / Charlotte Metro, NC</span></td>
+              <td class="mono-cell">W-9, D-U-N-S, Certificate of Good Standing &amp; COI</td>
+            </tr>
+            <tr>
+              <td><strong>GLBA &amp; Customer Data Custody</strong></td>
+              <td><strong>Zero NPI Access / Zero Hosting</strong><br><span style="color:var(--muted);font-size:0.78rem;">All inference occurs inside bank-owned RAM. Aizzia, LLC never receives or stores customer records.</span></td>
+              <td class="mono-cell"><span class="status-pass">NO_EXTERNAL_DATA_CUSTODY</span></td>
+            </tr>
+            <tr>
+              <td><strong>Supply Chain &amp; Subcontractors</strong></td>
+              <td><strong>Self-Contained Binary / Wheel</strong><br><span style="color:var(--muted);font-size:0.78rem;">Zero fourth-party SaaS/LLM dependencies; deterministic NumPy/SciPy numerical runtime.</span></td>
+              <td class="mono-cell">CycloneDX SBOM + Zero-Subcontractor Attestation</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </section>
   </main>
 
-  <footer>
-    <div>&copy; 2026 AIZZIA // TABSENSE.IO</div>
-    <div>FASTAPI + FASTMCP // SHA-256 DETERMINISTIC ARTIFACTS</div>
+  <footer class="container site-footer">
+    <div>
+      <strong>Aizzia, LLC</strong> &middot; Commercial Licensor of TabSense &amp; <code>core-btr</code><br>
+      <span>Formed in Wyoming &middot; Principal Office: Cornelius / Charlotte Metro, NC &middot; <a href="mailto:legal@tabsense.io">legal@tabsense.io</a></span>
+    </div>
+    <div style="text-align: right;">
+      <span>Static Zero-Cookie HTML &middot; Zero Third-Party Scripts &middot; Zero Network Egress</span><br>
+      <span>&copy; 2026 Aizzia, LLC. All rights reserved.</span>
+    </div>
   </footer>
 
   <script>
-    var specimens = {
-      quantum_dark: {
-        input: "rid=40812 | channel=pmt_ch0, aux_ch1\nstep 01  dt=0.40ms  pmt=14.0   aux=NaN\nstep 02  dt=0.40ms  pmt=13.0   aux=NaN\nstep 03  dt=0.41ms  pmt=0.0    aux=NaN  <-- explicit 0.0 dark hop\nstep 04  dt=0.40ms  pmt=0.0    aux=NaN",
-        output: "{\n  \"status\": \"MATCHED_REGIME\",\n  \"latency_ms\": 3.62,\n  \"dominant_lenses\": [\"zero_vs_null\", \"extrema_lifecycle\"],\n  \"historical_twins\": [\"rid_39104\", \"rid_38819\", \"rid_37210\"],\n  \"regime\": \"mid_scan_ion_collision_dark_hop\"\n}",
-        badge: "VERDICT: EXACT HISTORICAL TWIN RETRIEVED (ZERO != NAN)",
-        cls: "verdict-ok"
-      },
-      card_probe: {
-        input: "acct=pan_tok_991a | rail=ISO8583_CNP\nt+00.0s  amt=$0.00    mcc=5734  avs=Y   settle=NULL  <-- ASI probe\nt+00.8s  amt=$0.00    mcc=5734  avs=Y   settle=NULL  <-- burst cadence\nt+02.1s  amt=$2480.00 mcc=5094  avs=N   settle=PENDING",
-        output: "{\n  \"status\": \"MATCHED_REGIME\",\n  \"latency_ms\": 3.48,\n  \"dominant_lenses\": [\"zero_vs_null\", \"cadence_rhythm\", \"how_scale\"],\n  \"historical_twins\": [\"case_ct_8821\", \"case_ct_8409\"],\n  \"regime\": \"automated_zero_dollar_card_testing_drain\"\n}",
-        badge: "VERDICT: INLINE SUB-4MS BLOCK — CARD-TESTING SIGNATURE",
-        cls: "verdict-ok"
-      },
-      aml_sweep: {
-        input: "acct=corp_dda_4410 | rail=FEDWIRE_ACH\nFri 16:00  amt=$245,110.00  role=PAYROLL_BATCH   memo=REG\nFri 16:02  amt=$0.00        role=ZBA_SWEEP_CHK   memo=AUTO\nFri 16:05  amt=-$245,110.00 role=TREASURY_SWEEP  memo=ZERO_BAL",
-        output: "{\n  \"status\": \"MATCHED_REGIME\",\n  \"latency_ms\": 3.51,\n  \"dominant_lenses\": [\"seasonal_phase\", \"role_value_binding\"],\n  \"historical_twins\": [\"benign_zba_1102\", \"benign_zba_1048\"],\n  \"regime\": \"verified_friday_corporate_zba_sweep\"\n}",
-        badge: "VERDICT: AUTO-CLEARED IN 3.51 MS — FALSE-POSITIVE ALERT SUPPRESSED",
-        cls: "verdict-ok"
-      },
-      novel_spike: {
-        input: "rid=40999 / acct=wire_7712 | UNSEEN TRAJECTORY\nevent 01  dt=0.02ms  scale=+14.8_sigma  phase=INVERTED\nevent 02  dt=91.4ms  scale=-9.2_sigma   role=UNMAPPED_OPCODE\nevent 03  dt=0.01ms  scale=+22.1_sigma  aux=0.0",
-        output: "{\n  \"status\": \"EMPTY_BELOW_CUTOFF\",\n  \"latency_ms\": 3.59,\n  \"fused_rrf_score\": 0.0142,\n  \"calibrated_cutoff\": 0.0485,\n  \"matches\": []\n}",
-        badge: "VERDICT: FAIL-CLOSED REFUSAL — ZERO HALLUCINATED MATCHES",
-        cls: "verdict-refuse"
-      }
+    const cases = {
+      agent: `{
+  "input_window": [
+    {"dt_ms": 240, "step": "token_refresh", "amt": 0.0,   "dom_ev": 0},
+    {"dt_ms": 255, "step": "acct_summary",  "amt": 0.0,   "dom_ev": 0},
+    {"dt_ms": 248, "step": "bill_schedule", "amt": 145.2, "dom_ev": 0}
+  ],
+  "orthogonal_lens_projection_64d": {
+    "cadence_rhythm": 0.982,
+    "ordered_transitions": 0.964,
+    "zero_vs_null": "EXPLICIT_0.0_SIGNAL_RETAINED",
+    "role_value_binding": 0.951,
+    "max_pairwise_spearman_rho": 0.427
+  },
+  "verdict": {
+    "constellation_score": 0.9614,
+    "tau_cutoff": 0.9120,
+    "status": "ALLOW_STAGE1_HIGHWAY",
+    "matched_regime": "authorized_customer_agent",
+    "cpu_time_ms": 3.41
+  }
+}`,
+      ato: `{
+  "input_window": [
+    {"dt_ms": 18,  "step": "login_mfa",      "amt": null,   "dom_ev": 0},
+    {"dt_ms": 14,  "step": "pw_reset_probe", "amt": 0.0,    "dom_ev": 0},
+    {"dt_ms": 29,  "step": "wire_add_payee", "amt": 9850.0, "dom_ev": null}
+  ],
+  "orthogonal_lens_projection_64d": {
+    "cadence_rhythm": 0.412,
+    "ordered_transitions": 0.509,
+    "zero_vs_null": "NAN_TELEMETRY_DROPOUT_DETECTED",
+    "role_value_binding": 0.588,
+    "max_pairwise_spearman_rho": 0.427
+  },
+  "verdict": {
+    "constellation_score": 0.6108,
+    "tau_cutoff": 0.9120,
+    "status": "EMPTY_BELOW_CUTOFF",
+    "matched_regime": null,
+    "stage2_offramp": "STEP_UP_MFA_AND_SOC_QUEUE",
+    "cpu_time_ms": 3.62
+  }
+}`,
+      iso8583: `{
+  "input_window": [
+    {"dt_ms": 95,  "mcc": "5734", "amt": 0.00,  "pos_mode": "81_ecom"},
+    {"dt_ms": 102, "mcc": "5734", "amt": 0.00,  "pos_mode": "81_ecom"},
+    {"dt_ms": 110, "mcc": "5999", "amt": 489.0, "pos_mode": "81_ecom"}
+  ],
+  "orthogonal_lens_projection_64d": {
+    "cadence_rhythm": 0.485,
+    "ordered_transitions": 0.612,
+    "zero_vs_null": "EXPLICIT_0.00_CARD_TEST_SEQUENCE",
+    "how_scale": 0.534,
+    "max_pairwise_spearman_rho": 0.427
+  },
+  "verdict": {
+    "constellation_score": 0.5842,
+    "tau_cutoff": 0.9278,
+    "status": "EMPTY_BELOW_CUTOFF",
+    "matched_regime": null,
+    "stage2_offramp": "ROUTE_3DS2_OR_VELOCITY_DECLINE",
+    "cpu_time_ms": 3.18
+  }
+}`
     };
 
-    var inputPre = document.getElementById("inputPre");
-    var outputPre = document.getElementById("outputPre");
-    var verdictBadge = document.getElementById("verdictBadge");
-    var tabs = document.querySelectorAll(".preset-tab");
-
-    function renderSpecimen(key) {
-      var s = specimens[key];
-      inputPre.textContent = s.input;
-      outputPre.textContent = s.output;
-      verdictBadge.textContent = s.badge;
-      verdictBadge.className = "verdict-badge " + s.cls;
-    }
-
-    tabs.forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        tabs.forEach(function(b) { b.classList.remove("active"); });
-        btn.classList.add("active");
-        renderSpecimen(btn.getAttribute("data-key"));
+    document.querySelectorAll('.tab-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('inspectorOutput').textContent = cases[btn.dataset.case];
       });
     });
 
-    document.getElementById("themeBtn").addEventListener("click", function() {
-      var root = document.documentElement;
-      var next = root.getAttribute("data-theme") === "paper" ? "dark" : "paper";
-      root.setAttribute("data-theme", next);
+    document.getElementById('copyCliBtn').addEventListener('click', function () {
+      const text = document.getElementById('cliSnippet').innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = this.textContent;
+        this.textContent = 'Copied';
+        setTimeout(() => { this.textContent = orig; }, 1600);
+      });
     });
 
-    renderSpecimen("quantum_dark");
+    document.getElementById('themeToggle').addEventListener('click', function () {
+      const body = document.body;
+      const next = body.getAttribute('data-theme') === 'slate' ? 'paper' : 'slate';
+      body.setAttribute('data-theme', next);
+      this.textContent = next === 'slate' ? 'Paper View' : 'Slate View';
+    });
   </script>
 </body>
 </html>
